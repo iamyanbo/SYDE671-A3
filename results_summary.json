@@ -1,0 +1,53 @@
+{
+  "manual_pairs": 8,
+  "manual_mean_error_px": 1.5768441197565528,
+  "manual_median_error_px": 1.262005663583573,
+  "features": [
+    {
+      "image": "left",
+      "harris": 7043,
+      "anms": 500
+    },
+    {
+      "image": "middle",
+      "harris": 7073,
+      "anms": 500
+    },
+    {
+      "image": "right",
+      "harris": 6781,
+      "anms": 500
+    }
+  ],
+  "matching": [
+    {
+      "pair": "left to middle",
+      "ratio_matches": 128,
+      "ransac_inliers": 77,
+      "median_refitted_error_px": 1.0087563687312533
+    },
+    {
+      "pair": "right to middle",
+      "ratio_matches": 55,
+      "ransac_inliers": 30,
+      "median_refitted_error_px": 0.7616173609072383
+    }
+  ],
+  "interpolation": [
+    {
+      "example": "campus_warp",
+      "nearest_seconds": 6.910349899990251,
+      "bilinear_seconds": 13.948447099988698
+    },
+    {
+      "example": "campus_right_window",
+      "nearest_seconds": 0.361645299999509,
+      "bilinear_seconds": 0.8107479000027524
+    },
+    {
+      "example": "campus_left_window",
+      "nearest_seconds": 0.7232602000003681,
+      "bilinear_seconds": 1.7050465000065742
+    }
+  ]
+}

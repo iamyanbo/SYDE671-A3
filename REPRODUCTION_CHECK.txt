@@ -1,0 +1,23 @@
+FINAL SUBMISSION CHECK
+The current source was tested from a clean ZIP extraction without result files.
+prepare_data.py, run_all.py and build_writeup.py all completed successfully.
+All seven input/crop PNGs matched pixel for pixel.
+Both final mosaics, both rectifications, the corner comparison, six-descriptor
+example, feature-match overview and RANSAC inlier overview matched exactly.
+All three homography matrices matched within 1e-12.
+
+The submission contains the two campus photos for the Part A mosaic, the three
+parking photos for the Part B mosaic, and two window rectification examples.
+Both interpolation methods and their timings are shown in the writeup.
+Harris/ANMS, descriptors, feature matches, RANSAC results and final mosaics are shown.
+The code implements the homography and warping functions without high-level
+homography or perspective-warp library calls.
+
+All HTML images and local links resolve. Both regular and standalone HTML work.
+All displayed subscripts use the correct size and baseline position.
+The equation renderer and stylesheet use the same KaTeX version (0.16.22).
+The 14-page PDF was rendered and every page visually reviewed.
+Fonts are embedded, equations display correctly, and no text or figures are cut off.
+The PDF export script and its optional dependency instructions are included.
+The final ZIP passed its integrity check and every archived file matched the folder.
+Verification completed before publication.
