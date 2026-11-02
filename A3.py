@@ -92,7 +92,7 @@ def warpImageBilinear(im, H):
 
 def createMosaic(im1, im2, H):
     warped1 = warpImageBilinear(im1, H)
-    # Coverage: 1 inside the image, 0 outside
+    # Mark pixels from image 1
     mask1 = warpImageBilinear(np.ones_like(im1), H)
     height1, width1 = warped1.shape[:2]
     height2, width2 = im2.shape[:2]
@@ -117,24 +117,6 @@ def createMosaic(im1, im2, H):
     return mosaic / np.maximum(count, 1)
 
 
-def ANMS(h, coords, num_points=500):
-    ys, xs = coords
-    points = np.column_stack((xs, ys))
-    scores = h[ys, xs]
-    radii = np.full(len(points), np.inf)
-
-    # Nearest stronger corner
-    for i in range(len(points)):
-        x, y = points[i]
-        stronger = points[scores[i] < 0.9 * scores]
-        if len(stronger) > 0:
-            distances = np.sqrt((stronger[:, 0] - x)**2 + (stronger[:, 1] - y)**2)
-            radii[i] = distances.min()
-
-    order = np.argsort(radii)[::-1]
-    return points[order[:num_points]]
-
-
 def createPanorama(images, homographies):
     bounds = [find_bounds(im, H) for im, H in zip(images, homographies)]
     x_min = min(bound[0] for bound in bounds)
@@ -153,6 +135,24 @@ def createPanorama(images, homographies):
         count[y:y + height, x:x + width] += mask
 
     return mosaic / np.maximum(count, 1)
+
+
+def ANMS(h, coords, num_points=500):
+    ys, xs = coords
+    points = np.column_stack((xs, ys))
+    scores = h[ys, xs]
+    radii = np.full(len(points), np.inf)
+
+    # Nearest stronger corner
+    for i in range(len(points)):
+        x, y = points[i]
+        stronger = points[scores[i] < 0.9 * scores]
+        if len(stronger) > 0:
+            distances = np.sqrt((stronger[:, 0] - x)**2 + (stronger[:, 1] - y)**2)
+            radii[i] = distances.min()
+
+    order = np.argsort(radii)[::-1]
+    return points[order[:num_points]]
 
 
 def gaussian_filter(image, kernel_size=5, sigma=-1, boundary='fill'):
@@ -255,7 +255,6 @@ if __name__ == "__main__":
     im2 = iio.imread(data_dir / "campus/right.png", mode="RGB").astype(float) / 255
 
     # 1.2
-    # Matching roof, entrance, pipe and lamp details
     im1_pts = np.array([
         [433.6, 374.4], [484.8, 369.4], [533.4, 376.6], [560.9, 518.2],
         [520.0, 531.1], [567.5, 502.2], [452.2, 448.6], [462.5, 577.2],
@@ -265,19 +264,18 @@ if __name__ == "__main__":
         [113.2, 467.2], [158.5, 440.7], [48.1, 377.6], [42.0, 510.2],
     ], dtype=float)
 
-    H = computeH(im1_pts, im2_pts, show_equations=True)
-    print("H (image 1 to image 2) =\n", H)
+    H_manual = computeH(im1_pts, im2_pts, show_equations=True)
+    print("H =\n", H_manual)
 
     # 1.3
-    # Reuse H from 1.2
     im = im1
     start = time.perf_counter()
-    imwarped_nn = warpImageNearestNeighbor(im, H)
+    imwarped_nn = warpImageNearestNeighbor(im, H_manual)
     nearest_time = time.perf_counter() - start
     start = time.perf_counter()
-    imwarped_bil = warpImageBilinear(im, H)
+    imwarped_bil = warpImageBilinear(im, H_manual)
     bilinear_time = time.perf_counter() - start
-    np.savetxt(out_dir / "campus_warp_times.txt", [nearest_time, bilinear_time])
+    print(f"Campus warp: nearest {nearest_time:.2f}s, bilinear {bilinear_time:.2f}s")
 
     plt.figure(figsize=(12, 5))
     for i, (image, title) in enumerate([(im, "Original"), (imwarped_nn, "Nearest neighbor"),
@@ -303,20 +301,19 @@ if __name__ == "__main__":
         im = iio.imread(data_dir / filename, mode="RGB").astype(float) / 255
         rectangle = np.array([[0, 0], [width - 1, 0],
                               [0, height - 1], [width - 1, height - 1]])
-        H = computeH(corners, rectangle)
+        H_rect = computeH(corners, rectangle)
 
         start = time.perf_counter()
-        nearest = warpImageNearestNeighbor(im, H)
+        nearest = warpImageNearestNeighbor(im, H_rect)
         nearest_time = time.perf_counter() - start
         start = time.perf_counter()
-        bilinear = warpImageBilinear(im, H)
+        bilinear = warpImageBilinear(im, H_rect)
         bilinear_time = time.perf_counter() - start
-        # Show the selected rectangle
-        x_min, y_min, _, _ = find_bounds(im, H)
+        # Crop to the rectangle
+        x_min, y_min, _, _ = find_bounds(im, H_rect)
         nearest = nearest[-y_min:height - y_min, -x_min:width - x_min]
         bilinear = bilinear[-y_min:height - y_min, -x_min:width - x_min]
         print(f"{filename}: nearest {nearest_time:.2f}s, bilinear {bilinear_time:.2f}s")
-        np.savetxt(out_dir / f"{Path(filename).stem}_times.txt", [nearest_time, bilinear_time])
 
         plt.figure(figsize=(12, 4))
         for i, (image, title) in enumerate([(im, "Original"), (nearest, "Nearest neighbor"),
@@ -334,11 +331,8 @@ if __name__ == "__main__":
         plt.close()
 
     # 1.4
-    H = computeH(im1_pts, im2_pts)
-    manual_mosaic = createMosaic(im1, im2, H)
+    manual_mosaic = createMosaic(im1, im2, H_manual)
     iio.imwrite(out_dir / "part_A_mosaic.png", (np.clip(manual_mosaic, 0, 1) * 255).round().astype(np.uint8))
-    np.savetxt(out_dir / "part_A_H.txt", H)
-    np.savez(out_dir / "manual_data.npz", points1=im1_pts, points2=im2_pts, H=H)
 
     plt.figure(figsize=(10, 6))
     for j, (im, points) in enumerate([(im1, im1_pts), (im2, im2_pts)]):
@@ -398,7 +392,7 @@ if __name__ == "__main__":
     descriptors_right = extractDescriptors(gray_right, points_right)
 
     plt.figure(figsize=(12, 2))
-    for j in range(min(6, len(descriptors_left))):
+    for j in range(6):
         plt.subplot(1, 6, j + 1)
         plt.imshow(descriptors_left[j], cmap="gray", interpolation="nearest")
         plt.title(f"Feature {j + 1}")
@@ -457,12 +451,6 @@ if __name__ == "__main__":
     print(f"Right: {len(inliers_right)} / {len(matches_right)} RANSAC inliers")
     print("Left H =\n", H_left)
     print("Right H =\n", H_right)
-    np.savetxt(out_dir / "automatic_H_1.txt", H_left)
-    np.savetxt(out_dir / "automatic_H_2.txt", H_right)
-    np.savez(out_dir / "matching_data_1.npz", points1=matched_left,
-             points2=middle_for_left, inliers=inliers_left, H=H_left)
-    np.savez(out_dir / "matching_data_2.npz", points1=matched_right,
-             points2=middle_for_right, inliers=inliers_right, H=H_right)
 
     images = [left, middle, right]
     transforms = [H_left, np.eye(3), H_right]
