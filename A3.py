@@ -334,134 +334,138 @@ if __name__ == "__main__":
         plt.close()
 
     # 1.4
-    # Each pair needs its own matching point arrays
-    mosaics = [
-        ("campus/left.png", "campus/right.png", im1_pts, im2_pts),
-    ]
+    H = computeH(im1_pts, im2_pts)
+    manual_mosaic = createMosaic(im1, im2, H)
+    iio.imwrite(out_dir / "part_A_mosaic.png", (np.clip(manual_mosaic, 0, 1) * 255).round().astype(np.uint8))
+    np.savetxt(out_dir / "part_A_H.txt", H)
+    np.savez(out_dir / "manual_data.npz", points1=im1_pts, points2=im2_pts, H=H)
 
-    manual_mosaics = {}
-    for i, (file1, file2, points1, points2) in enumerate(mosaics, start=1):
-        im1 = iio.imread(data_dir / file1, mode="RGB").astype(float) / 255
-        im2 = iio.imread(data_dir / file2, mode="RGB").astype(float) / 255
-        H = computeH(points1, points2)
-        mosaic = createMosaic(im1, im2, H)
-        manual_mosaics[(file1, file2)] = mosaic
-        iio.imwrite(out_dir / "part_A_mosaic.png", (np.clip(mosaic, 0, 1) * 255).round().astype(np.uint8))
-        np.savetxt(out_dir / "part_A_H.txt", H)
-        np.savez(out_dir / "manual_data.npz", points1=points1, points2=points2, H=H)
+    plt.figure(figsize=(10, 6))
+    for j, (im, points) in enumerate([(im1, im1_pts), (im2, im2_pts)]):
+        plt.subplot(1, 2, j + 1)
+        plt.imshow(im)
+        plt.scatter(points[:, 0], points[:, 1], c="red", s=12)
+        for number, (x, y) in enumerate(points, start=1):
+            plt.text(x + 3, y, str(number), color="yellow", fontsize=9)
+        plt.axis("off")
+    plt.tight_layout()
+    plt.savefig(out_dir / "part_A_manual_points.png", dpi=150)
+    plt.show()
+    plt.close()
 
-        plt.figure(figsize=(10, 6))
-        for j, (im, points) in enumerate([(im1, points1), (im2, points2)]):
-            plt.subplot(1, 2, j + 1)
-            plt.imshow(im)
-            plt.scatter(points[:, 0], points[:, 1], c="red", s=12)
-            for number, (x, y) in enumerate(points, start=1):
-                plt.text(x + 3, y, str(number), color="yellow", fontsize=9)
-            plt.axis("off")
-        plt.tight_layout()
-        plt.savefig(out_dir / "part_A_manual_points.png", dpi=150)
-        plt.show()
-        plt.close()
-
-        plt.figure(figsize=(15, 5))
-        for j, (image, title) in enumerate([(im1, "Image 1"), (im2, "Image 2"),
-                                            (mosaic, "Mosaic")]):
-            plt.subplot(1, 3, j + 1)
-            plt.imshow(np.clip(image, 0, 1))
-            plt.title(title)
-            plt.axis("off")
-        plt.tight_layout()
-        plt.savefig(out_dir / "part_A_sources_and_mosaic.png", dpi=150, bbox_inches="tight")
-        plt.show()
-        plt.close()
+    plt.figure(figsize=(15, 5))
+    for j, (image, title) in enumerate([(im1, "Image 1"), (im2, "Image 2"),
+                                        (manual_mosaic, "Mosaic")]):
+        plt.subplot(1, 3, j + 1)
+        plt.imshow(np.clip(image, 0, 1))
+        plt.title(title)
+        plt.axis("off")
+    plt.tight_layout()
+    plt.savefig(out_dir / "part_A_sources_and_mosaic.png", dpi=150, bbox_inches="tight")
+    plt.show()
+    plt.close()
 
     # 2.1
-    feature_images = [
-        "parking/left.png", "parking/middle.png", "parking/right.png",
-    ]
-    features = {}
+    left = iio.imread(data_dir / "parking/left.png", mode="RGB").astype(float) / 255
+    middle = iio.imread(data_dir / "parking/middle.png", mode="RGB").astype(float) / 255
+    right = iio.imread(data_dir / "parking/right.png", mode="RGB").astype(float) / 255
+    gray_left = rgb2gray(left)
+    gray_middle = rgb2gray(middle)
+    gray_right = rgb2gray(right)
 
-    for i, filename in enumerate(feature_images, start=1):
-        im = iio.imread(data_dir / filename, mode="RGB").astype(float) / 255
-        gray = rgb2gray(im)
-        h, coords = get_harris_corners(gray)
-        selected = ANMS(h, coords, num_points=500)
+    h_left, coords_left = get_harris_corners(gray_left)
+    h_middle, coords_middle = get_harris_corners(gray_middle)
+    h_right, coords_right = get_harris_corners(gray_right)
+    points_left = ANMS(h_left, coords_left)
+    points_middle = ANMS(h_middle, coords_middle)
+    points_right = ANMS(h_right, coords_right)
 
-        if i == 1:
-            fig, axes = plt.subplots(1, 3, figsize=(10, 4.8))
-            for ax, title in zip(axes, ["Original", "Harris corners", "After ANMS"]):
-                ax.imshow(im)
-                ax.set_title(title)
-                ax.axis("off")
-            axes[1].scatter(coords[1], coords[0], s=3, c="red")
-            axes[2].scatter(selected[:, 0], selected[:, 1], s=3, c="red")
-            fig.tight_layout(pad=0.3, w_pad=0.5)
-            fig.savefig(out_dir / "corners_1.png", dpi=150, bbox_inches="tight", pad_inches=0.02)
-            plt.show()
-            plt.close(fig)
+    fig, axes = plt.subplots(1, 3, figsize=(10, 4.8))
+    for ax, title in zip(axes, ["Original", "Harris corners", "After ANMS"]):
+        ax.imshow(left)
+        ax.set_title(title)
+        ax.axis("off")
+    axes[1].scatter(coords_left[1], coords_left[0], s=3, c="red")
+    axes[2].scatter(points_left[:, 0], points_left[:, 1], s=3, c="red")
+    fig.tight_layout(pad=0.3, w_pad=0.5)
+    fig.savefig(out_dir / "corners_1.png", dpi=150, bbox_inches="tight", pad_inches=0.02)
+    plt.show()
+    plt.close(fig)
 
-        # 2.2
-        descriptors = extractDescriptors(gray, selected)
-        features[filename] = (selected, descriptors)
+    # 2.2
+    descriptors_left = extractDescriptors(gray_left, points_left)
+    descriptors_middle = extractDescriptors(gray_middle, points_middle)
+    descriptors_right = extractDescriptors(gray_right, points_right)
 
-        if i == 1:
-            plt.figure(figsize=(12, 2))
-            for j in range(min(6, len(descriptors))):
-                plt.subplot(1, 6, j + 1)
-                plt.imshow(descriptors[j], cmap="gray", interpolation="nearest")
-                plt.title(f"Feature {j + 1}")
-                plt.axis("off")
-            plt.tight_layout()
-            plt.savefig(out_dir / f"descriptors_{i}.png", dpi=150)
-            plt.show()
-            plt.close()
+    plt.figure(figsize=(12, 2))
+    for j in range(min(6, len(descriptors_left))):
+        plt.subplot(1, 6, j + 1)
+        plt.imshow(descriptors_left[j], cmap="gray", interpolation="nearest")
+        plt.title(f"Feature {j + 1}")
+        plt.axis("off")
+    plt.tight_layout()
+    plt.savefig(out_dir / "descriptors_1.png", dpi=150)
+    plt.show()
+    plt.close()
 
     # 2.3
-    matching_pairs = [
-        ("parking/left.png", "parking/middle.png"),
-        ("parking/right.png", "parking/middle.png"),
-    ]
-    homographies = {"parking/middle.png": np.eye(3)}
+    matches_left = matchDescriptors(descriptors_left, descriptors_middle)
+    matches_right = matchDescriptors(descriptors_right, descriptors_middle)
+    matched_left = points_left[matches_left[:, 0]]
+    middle_for_left = points_middle[matches_left[:, 1]]
+    matched_right = points_right[matches_right[:, 0]]
+    middle_for_right = points_middle[matches_right[:, 1]]
 
-    for i, (file1, file2) in enumerate(matching_pairs, start=1):
-        im1 = iio.imread(data_dir / file1, mode="RGB").astype(float) / 255
-        im2 = iio.imread(data_dir / file2, mode="RGB").astype(float) / 255
-        points1, descriptors1 = features[file1]
-        points2, descriptors2 = features[file2]
-        matches = matchDescriptors(descriptors1, descriptors2, threshold=0.5)
-        matched_pts1 = points1[matches[:, 0]]
-        matched_pts2 = points2[matches[:, 1]]
+    height1, width1 = left.shape[:2]
+    height2, width2 = middle.shape[:2]
+    canvas = np.zeros((max(height1, height2), width1 + width2, 3))
+    canvas[:height1, :width1] = left
+    canvas[:height2, width1:] = middle
+    plt.figure(figsize=(12, 5))
+    plt.imshow(canvas)
+    for (x1, y1), (x2, y2) in zip(matched_left, middle_for_left):
+        plt.plot([x1, x2 + width1], [y1, y2], "-o", markersize=2, linewidth=0.5)
+    plt.title(f"Feature matches: {len(matches_left)}")
+    plt.axis("off")
+    plt.tight_layout()
+    plt.savefig(out_dir / "matches_1.png", dpi=150)
+    plt.show()
+    plt.close()
 
-        height1, width1 = im1.shape[:2]
-        height2, width2 = im2.shape[:2]
-        canvas = np.zeros((max(height1, height2), width1 + width2, 3))
-        canvas[:height1, :width1] = im1
-        canvas[:height2, width1:] = im2
-        plt.figure(figsize=(12, 5))
-        plt.imshow(canvas)
-        for (x1, y1), (x2, y2) in zip(matched_pts1, matched_pts2):
-            plt.plot([x1, x2 + width1], [y1, y2], "-o", markersize=2, linewidth=0.5)
-        plt.title(f"Feature matches: {len(matches)}")
-        plt.axis("off")
-        plt.tight_layout()
-        plt.savefig(out_dir / f"matches_{i}.png", dpi=150)
-        plt.show()
-        plt.close()
+    height1, width1 = right.shape[:2]
+    height2, width2 = middle.shape[:2]
+    canvas = np.zeros((max(height1, height2), width1 + width2, 3))
+    canvas[:height1, :width1] = right
+    canvas[:height2, width1:] = middle
+    plt.figure(figsize=(12, 5))
+    plt.imshow(canvas)
+    for (x1, y1), (x2, y2) in zip(matched_right, middle_for_right):
+        plt.plot([x1, x2 + width1], [y1, y2], "-o", markersize=2, linewidth=0.5)
+    plt.title(f"Feature matches: {len(matches_right)}")
+    plt.axis("off")
+    plt.tight_layout()
+    plt.savefig(out_dir / "matches_2.png", dpi=150)
+    plt.show()
+    plt.close()
 
-        # 2.4
-        np.random.seed(671)
-        H_auto, inliers = ransacHomography(matched_pts1, matched_pts2,
-                                           iterations=1000, threshold=3)
-        homographies[file1] = H_auto
-        print(f"{file1}: {len(inliers)} / {len(matches)} RANSAC inliers")
-        print("Automatic H =\n", H_auto)
-        np.savetxt(out_dir / f"automatic_H_{i}.txt", H_auto)
-        np.savez(out_dir / f"matching_data_{i}.npz", points1=matched_pts1,
-                 points2=matched_pts2, inliers=inliers, H=H_auto)
+    # 2.4
+    np.random.seed(671)
+    H_left, inliers_left = ransacHomography(matched_left, middle_for_left)
+    np.random.seed(671)
+    H_right, inliers_right = ransacHomography(matched_right, middle_for_right)
+    print(f"Left: {len(inliers_left)} / {len(matches_left)} RANSAC inliers")
+    print(f"Right: {len(inliers_right)} / {len(matches_right)} RANSAC inliers")
+    print("Left H =\n", H_left)
+    print("Right H =\n", H_right)
+    np.savetxt(out_dir / "automatic_H_1.txt", H_left)
+    np.savetxt(out_dir / "automatic_H_2.txt", H_right)
+    np.savez(out_dir / "matching_data_1.npz", points1=matched_left,
+             points2=middle_for_left, inliers=inliers_left, H=H_left)
+    np.savez(out_dir / "matching_data_2.npz", points1=matched_right,
+             points2=middle_for_right, inliers=inliers_right, H=H_right)
 
-    images = [iio.imread(data_dir / filename, mode="RGB").astype(float) / 255
-              for filename in feature_images]
-    transforms = [homographies[filename] for filename in feature_images]
+    images = [left, middle, right]
+    transforms = [H_left, np.eye(3), H_right]
     automatic_mosaic = createPanorama(images, transforms)
     iio.imwrite(out_dir / "part_B_mosaic.png",
                 (np.clip(automatic_mosaic, 0, 1) * 255).round().astype(np.uint8))
@@ -480,7 +484,7 @@ if __name__ == "__main__":
 
     plt.figure(figsize=(14, 6))
     for i, (im, title) in enumerate([
-        (manual_mosaics[("campus/left.png", "campus/right.png")], "Part A: manual, 2 images"),
+        (manual_mosaic, "Part A: manual, 2 images"),
         (automatic_mosaic, "Part B: automatic, 3 images"),
     ]):
         plt.subplot(1, 2, i + 1)
