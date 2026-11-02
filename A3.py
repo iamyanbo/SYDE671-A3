@@ -1,5 +1,5 @@
 # Yanbo Cheng
-# SYDE 671 - Assignment 3
+# 21287485
 
 from pathlib import Path
 import time
@@ -245,9 +245,16 @@ def ransacHomography(points1, points2, iterations=1000, threshold=3):
 
 
 if __name__ == "__main__":
-    # 1.1: Photos
+    project_dir = Path(__file__).resolve().parent
+    data_dir = project_dir / "data"
+    out_dir = project_dir / "homography_output"
+    out_dir.mkdir(exist_ok=True)
 
-    # 1.2: Homography
+    # 1.1
+    im1 = iio.imread(data_dir / "campus/left.png", mode="RGB").astype(float) / 255
+    im2 = iio.imread(data_dir / "campus/right.png", mode="RGB").astype(float) / 255
+
+    # 1.2
     # Matching roof, entrance, pipe and lamp details
     im1_pts = np.array([
         [433.6, 374.4], [484.8, 369.4], [533.4, 376.6], [560.9, 518.2],
@@ -261,14 +268,9 @@ if __name__ == "__main__":
     H = computeH(im1_pts, im2_pts, show_equations=True)
     print("H (image 1 to image 2) =\n", H)
 
-    # 1.3: Rectification
-    project_dir = Path(__file__).resolve().parent
-    data_dir = project_dir / "data"
-    out_dir = project_dir / "homography_output"
-    out_dir.mkdir(exist_ok=True)
-
+    # 1.3
     # Reuse H from 1.2
-    im = iio.imread(data_dir / "campus/left.png", mode="RGB").astype(float) / 255
+    im = im1
     start = time.perf_counter()
     imwarped_nn = warpImageNearestNeighbor(im, H)
     nearest_time = time.perf_counter() - start
@@ -331,7 +333,7 @@ if __name__ == "__main__":
         plt.show()
         plt.close()
 
-    # 1.4: Mosaics
+    # 1.4
     # Each pair needs its own matching point arrays
     mosaics = [
         ("campus/left.png", "campus/right.png", im1_pts, im2_pts),
@@ -373,7 +375,7 @@ if __name__ == "__main__":
         plt.show()
         plt.close()
 
-    # 2.1: Harris corners and ANMS
+    # 2.1
     feature_images = [
         "parking/left.png", "parking/middle.png", "parking/right.png",
     ]
@@ -398,7 +400,7 @@ if __name__ == "__main__":
             plt.show()
             plt.close(fig)
 
-        # 2.2: Feature descriptors
+        # 2.2
         descriptors = extractDescriptors(gray, selected)
         features[filename] = (selected, descriptors)
 
@@ -414,7 +416,7 @@ if __name__ == "__main__":
             plt.show()
             plt.close()
 
-    # 2.3: Match each outer image to the middle image
+    # 2.3
     matching_pairs = [
         ("parking/left.png", "parking/middle.png"),
         ("parking/right.png", "parking/middle.png"),
@@ -446,7 +448,7 @@ if __name__ == "__main__":
         plt.show()
         plt.close()
 
-        # 2.4: Estimate both transforms into the middle image
+        # 2.4
         np.random.seed(671)
         H_auto, inliers = ransacHomography(matched_pts1, matched_pts2,
                                            iterations=1000, threshold=3)
