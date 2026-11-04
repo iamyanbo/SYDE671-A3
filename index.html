@@ -252,6 +252,6 @@ imwarped_bil = warpImageBilinear(im, H)</code></pre>
 <figure><a href="homography_output/part_A_and_B.png"><img src="homography_output/part_A_and_B.png" alt="Manual and automatic mosaics."></a></figure>
 
 <h2 id="most-important-thing-learned">Most important thing learned</h2>
-<p>The most important thing I learned was how much the final stitch depends on the point matches used to estimate the homography. For the right and middle photos, RANSAC kept 30 of the 55 initial matches. That showed me why similar-looking patches still need to agree on how the two images line up.</p>
+<p>The most important thing I learned was how to derive the homography. I found it interesting that adding a third coordinate to a 2D point lets us represent a perspective transform with a 3 × 3 matrix. Dividing by that third coordinate and rearranging gives two linear equations for each point match. The rest of the assignment builds on this, from warping one image to stitching several together.</p>
 
 </main></body></html>
